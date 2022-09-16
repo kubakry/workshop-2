@@ -62,8 +62,6 @@ public class UserDao {
             e.printStackTrace ();
         }
     }
-
-
     public static void update (User user) {
         try (Connection conn = DbUtil.connect ()) {
             PreparedStatement statement =
@@ -81,8 +79,9 @@ public class UserDao {
     public static String hashPassword (String password) {
         return org.mindrot.jbcrypt.BCrypt.hashpw (password, org.mindrot.jbcrypt.BCrypt.gensalt ());
     }
-    private static User[] addToArray(User u, User[] users) {
-        User[] tmpUsers = Arrays.copyOf(users, users.length + 1);
+
+    private static User[] addToArray (User u, User[] users) {
+        User[] tmpUsers = Arrays.copyOf (users, users.length + 1);
         // Tworzymy kopię tablicy powiększoną o 1.
         tmpUsers[users.length] = u;
         // Dodajemy obiekt na ostatniej pozycji.
@@ -91,13 +90,12 @@ public class UserDao {
     }
 
     public static User[] findAll () {
-        User user = new User ();
-        User[] usersArray;
-        try (Connection conn = DbUtil.connect ())
-        {
+        User[] usersArray = new User[0];
+        try (Connection conn = DbUtil.connect ()) {
             PreparedStatement statement = conn.prepareStatement (FIND_ALL);
             ResultSet resultSet = statement.executeQuery ();
             while (resultSet.next ()) {
+                User user = new User ();
                 long id1 = resultSet.getInt ("id");
                 user.setId ((int) id1);
                 user.setUserName (resultSet.getString ("userName"));
@@ -105,13 +103,28 @@ public class UserDao {
                 user.setPassword (resultSet.getString ("password"));
                 usersArray = addToArray (user, usersArray);
             }
-        } catch (SQLException e)
-        {
+        } catch (SQLException e) {
             e.printStackTrace ();
         }
         return usersArray;
     }
 
+    public static void generateUser (String surnamePart) {
+        User user = new User ();
+        user.setUserName (surnamePart + "ski");
+        user.setEmail (surnamePart.toLowerCase () + "ski@nothing.com");
+        user.setPassword (randomString (8));
+        UserDao.create (user);
+
+    }
+
+    public static String randomString (int len) {
+        char[] str = new char[100];
+        for (int i = 0; i < len; i++) {
+            str[i] = (char) (((int) (Math.random () * 26)) + (int) 'A');
+        }
+        return (new String (str, 0, len));
+    }
 
 
 }
