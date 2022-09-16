@@ -1,3 +1,5 @@
+package pl.coderslab.entity;
+
 import com.sun.jdi.connect.spi.Connection;
 
 import java.sql.DriverManager;
