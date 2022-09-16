@@ -1,52 +1,117 @@
 package pl.coderslab.entity;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
+import java.util.Arrays;
 
 public class UserDao {
-    private static final String CREATE_USER_QUERY = "INSERT INTO users(username, email, password) VALUES (?, ?, ?)";
-    private static final String FIND_QUERY = "SELECT *  FROM ? WHERE id = ?";
-    private static final String DELETE_QUERY = "DELETE FROM ? WHERE id=?";
+    private static final String CREATE_USER_QUERY = "INSERT INTO users (username, email, password) VALUES (?, ?, ?)";
+    private static final String UPDATE_USER_QUERY = "UPDATE users SET username=?, email=?, password=? WHERE id=?";
+    private static final String FIND_QUERY = "SELECT *  FROM users WHERE id = ?";
+    private static final String DELETE_QUERY = "DELETE FROM users WHERE id=?";
+
+    private static final String FIND_ALL = "SELECT *  FROM users WHERE 1";
 
 
-    public void create (User user) {
-        try (Connection connection = (Connection) DbUtil.connect ("workshop2"))
+    public static User create (User user) {
+        try (Connection conn = DbUtil.connect ()) {
+            PreparedStatement statement =
+                    conn.prepareStatement (CREATE_USER_QUERY, Statement.RETURN_GENERATED_KEYS);
+            statement.setString (1, user.getUserName ());
+            statement.setString (2, user.getEmail ());
+            statement.setString (3, hashPassword (user.getPassword ()));
+            statement.executeUpdate ();
+            //Pobieramy wstawiony do bazy identyfikator, a następnie ustawiamy id obiektu user.
+            ResultSet resultSet = statement.getGeneratedKeys ();
+            if (resultSet.next ()) {
+                user.setId (resultSet.getInt (1));
+            }
+            return user;
+        } catch (SQLException e) {
+            e.printStackTrace ();
+            return null;
+        }
+    }
+
+    public static User read (long id) {
+        User user = new User ();
+        try (Connection connection = (Connection) DbUtil.connect ()) {
+            PreparedStatement statement = connection.prepareStatement (FIND_QUERY);
+            statement.setString (1, String.valueOf (id));
+            statement.executeQuery ();
+            ResultSet resultSet = statement.executeQuery ();
+            while (resultSet.next ()) {
+                long id1 = resultSet.getInt ("id");
+                user.setId ((int) id1);
+                user.setUserName (resultSet.getString ("userName"));
+                user.setEmail (resultSet.getString ("email"));
+                user.setPassword (resultSet.getString ("password"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace ();
+        }
+        return user;
+    }
+
+    public static void delete (int userId) {
+        try (Connection conn = DbUtil.connect ()) {
+            PreparedStatement statement =
+                    conn.prepareStatement (DELETE_QUERY);
+            statement.setInt (1, userId);
+            statement.executeUpdate ();
+        } catch (SQLException e) {
+            e.printStackTrace ();
+        }
+    }
+
+
+    public static void update (User user) {
+        try (Connection conn = DbUtil.connect ()) {
+            PreparedStatement statement =
+                    conn.prepareStatement (UPDATE_USER_QUERY, Statement.RETURN_GENERATED_KEYS);
+            statement.setString (1, user.getUserName ());
+            statement.setString (2, user.getEmail ());
+            statement.setString (3, hashPassword (user.getPassword ()));
+            statement.setInt (4, user.getId ());
+            statement.executeUpdate ();
+        } catch (SQLException e) {
+            e.printStackTrace ();
+        }
+    }
+
+    public static String hashPassword (String password) {
+        return org.mindrot.jbcrypt.BCrypt.hashpw (password, org.mindrot.jbcrypt.BCrypt.gensalt ());
+    }
+    private static User[] addToArray(User u, User[] users) {
+        User[] tmpUsers = Arrays.copyOf(users, users.length + 1);
+        // Tworzymy kopię tablicy powiększoną o 1.
+        tmpUsers[users.length] = u;
+        // Dodajemy obiekt na ostatniej pozycji.
+        return tmpUsers; //
+        // Zwracamy nową tablicę.
+    }
+
+    public static User[] findAll () {
+        User user = new User ();
+        User[] usersArray;
+        try (Connection conn = DbUtil.connect ())
         {
-            PreparedStatement preparedStatement = connection.prepareStatement (CREATE_USER_QUERY);
-            preparedStatement.setString (1, user.getUserName ());
-            preparedStatement.setString (2, user.getEmail ());
-            preparedStatement.setString (3, user.getPassword ());
-            preparedStatement.executeUpdate ();
-
+            PreparedStatement statement = conn.prepareStatement (FIND_ALL);
+            ResultSet resultSet = statement.executeQuery ();
+            while (resultSet.next ()) {
+                long id1 = resultSet.getInt ("id");
+                user.setId ((int) id1);
+                user.setUserName (resultSet.getString ("userName"));
+                user.setEmail (resultSet.getString ("email"));
+                user.setPassword (resultSet.getString ("password"));
+                usersArray = addToArray (user, usersArray);
+            }
         } catch (SQLException e)
         {
             e.printStackTrace ();
         }
+        return usersArray;
+    }
 
-    }
-        public User read ( long id){
-            User user = new User ();
-            try (Connection connection = (Connection) DbUtil.connect ()) {
-                PreparedStatement preparedStatement = connection.prepareStatement (FIND_QUERY);
-                preparedStatement.setString (1, "users");
-                preparedStatement.setLong (2, id);
-                ResultSet resultSet = preparedStatement.executeQuery ();
-                while (resultSet.next ()) {
-                    long id1 = resultSet.getInt ("id");
-                    user.setId ((int) id1);
-                    user.setUserName (resultSet.getString ("userName"));
-                    user.setEmail (resultSet.getString ("email"));
-                }
-            } catch (SQLException e) {
-                e.printStackTrace ();
-            }
-            return user;
-        }
-    public String hashPassword(String password) {
-        return BCrypt.hashpw(password, BCrypt.gensalt());
-    }
 
 
 }
